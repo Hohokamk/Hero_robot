@@ -30,6 +30,7 @@ DMMOTOR& DMMOTOR::State_Decode(CAN hcan, uint8_t idata[][8])//接收反馈数据
 	tmp_value = (idata[id][5]) | ((idata[id][4] & 0x0f) << 8);
 	current = uint_to_float(tmp_value, C_MIN, C_MAX, 12);
 	torque = current * KT;//（力矩=电流*转矩常数，本产品转矩常数为 1.4Nm/A）
+	return *this;
 }
 
 

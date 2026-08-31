@@ -83,8 +83,11 @@ void MotorUpdateTask(void* pvParameters)
 
 		for (auto& motor : can2_motor)motor.Ontimer(can2.data, can2.temp_data);
 
-		DMmotor[0].State_Decode(can2, can2.jointidata)
-			.DMmotor_Ontimer(can2, DMmotor[1].Kp, DMmotor[1].Kd, can2.jointpdata[0]);
+        for (auto& dm : DMmotor)
+        {
+            dm.State_Decode(can2, can2.jointidata);
+            dm.DMmotor_Ontimer(can2, dm.Kp, dm.Kd, can2.jointpdata[dm.ID - 1]);
+        }
 
 
 	vTaskDelayUntil(&xlastWakeTime, pdMS_TO_TICKS(2));//开始执行该任务之后1ms再执行该任务
@@ -101,7 +104,10 @@ void CanTransimtTask(void* pvParameters)
 		switch ((timer.counter++) % 3)
 		{
 		case 0:
-				DMmotor[0].DMmotor_transmit(1);
+            for (auto& dm : DMmotor)
+            {
+                dm.DMmotor_transmit(dm.ID);
+            }
 			break;
 		case 1:
 			can1.Transmit(0x1ff, can1.temp_data + 8);

@@ -89,4 +89,4 @@ public:
 
 };
 
-extern DMMOTOR DMmotor[1];
+extern DMMOTOR DMmotor[4];

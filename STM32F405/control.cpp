@@ -20,9 +20,11 @@ void CONTROL::Init(std::vector<Motor*> motor)
 			shooter_motor[num3++] = motor[i];
 			break;
 		case(function_type::supply):
+			supply_motor[num4] = motor[i];
 			supply_motor[num4]->spinning = false;
 			supply_motor[num4]->need_curcircle = false;
-			supply_motor[num4++] = motor[i];
+			num4++;
+			break;
 		default:
 			break;
 		}
@@ -137,10 +139,10 @@ void CONTROL::CHASSIS::Mecanum_Resolve(
 {
 	int32_t wheel_speed[4] =
 	{
-		vx + vy - wz,  // 左前 FL，ID5
-		vx - vy + wz,  // 右前 FR，ID6
-		vx - vy - wz,  // 左后 RL，ID8
-		vx + vy + wz   // 右后 RR，ID7
+		vx + vy - wz,  // 0 左前
+		vx - vy + wz,  // 1 右前
+		vx + vy + wz,  // 2 右后
+		vx - vy - wz   // 3 左后
 	};
 
 	int32_t max_abs_speed = 1;
@@ -175,20 +177,17 @@ void CONTROL::CHASSIS::Mecanum_Resolve(
 	 * 方向不对时，只改对应的 1 为 -1。
 	 */
 	const int8_t motor_direction[4] =
-	{
-		1,  // 左前 ID5
-		-1,  // 右前 ID6
-		1,  // 左后 ID8
-		-1   // 右后 ID7
-	};
+	 {
+		 1,   // 0 左前
+		 -1,  // 1 右前
+		 -1,  // 2 右后
+		 1    // 3 左后
+	 };
 
-	can1_motor[0].setspeed = wheel_speed[0] * scale * motor_direction[0];
-
-	can1_motor[1].setspeed = wheel_speed[1] * scale * motor_direction[1];
-
-	can1_motor[3].setspeed = wheel_speed[2] * scale * motor_direction[2];
-
-	can1_motor[2].setspeed = wheel_speed[3] * scale * motor_direction[3];
+	ctrl.chassis_motor[0]->setspeed = wheel_speed[0] * scale * motor_direction[0];
+	ctrl.chassis_motor[1]->setspeed = wheel_speed[1] * scale * motor_direction[1];
+	ctrl.chassis_motor[2]->setspeed = wheel_speed[2] * scale * motor_direction[2];
+	ctrl.chassis_motor[3]->setspeed = wheel_speed[3] * scale * motor_direction[3];
 }
 
 void CONTROL::CHASSIS::Update()
@@ -258,7 +257,6 @@ void CONTROL::SHOOTER::Update()
 	else 
 	{
 		ctrl.supply_motor[0]->spinning = false;
-		ctrl.supply_motor[1]->spinning = false;
 	}
 }
 

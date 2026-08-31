@@ -8,12 +8,12 @@
 全局变量用extern声明，避免头文件多次引用multiple defined
 */
 
-#define CAN1_MOTOR_NUM 6
+#define CAN1_MOTOR_NUM 4
 #define CAN2_MOTOR_NUM 6
 
 #define CHASSIS_MOTOR_NUM 4
 #define PANTILE_MOTOR_NUM 2
-#define SHOOTER_MOTOR_NUM 2
+#define SHOOTER_MOTOR_NUM 3
 #define SUPPLY_MOTOR_NUM 1
 
 #define RcQueueHandle Uart2QueueHandler

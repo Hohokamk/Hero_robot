@@ -138,13 +138,14 @@ void HAL_CAN_RxCpltCallback(CAN_HandleTypeDef* hcan)
 		memcpy(can1.data[hcan->pRxMsg->StdId - 0x201], hcan->pRxMsg->Data, sizeof(uint8_t) * 8);
 	else
 	{
-		if (hcan->pRxMsg->StdId == 1)
+		uint32_t id = hcan->pRxMsg->StdId;
+		if (id >= 1 && id <= 4)
 		{
-			memcpy(can2.jointidata, hcan->pRxMsg->Data, sizeof(uint8_t) * 8);
+			memcpy(can2.jointidata[id - 1], hcan->pRxMsg->Data, 8);
 		}
 		else
 		{
-			memcpy(can2.data[hcan->pRxMsg->StdId - 0x201], hcan->pRxMsg->Data, sizeof(uint8_t) * 8);
+			memcpy(can2.data[id - 0x201], hcan->pRxMsg->Data, 8);
 		}
 	}
 

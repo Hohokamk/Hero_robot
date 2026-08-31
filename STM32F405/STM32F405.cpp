@@ -31,20 +31,21 @@ Motor can1_motor[CAN1_MOTOR_NUM] = {
 	Motor(M3508,SPD,chassis, ID5, PID(10.f, 0.0f, 1.5f,0.f)),
 	Motor(M3508,SPD,chassis, ID6, PID(10.f, 0.0f, 1.5f,0.f)),
 	Motor(M3508,SPD,chassis, ID7, PID(10.f, 0.0f, 1.5f,0.f)),
-	Motor(M3508,SPD,chassis, ID8, PID(10.f, 0.0f, 1.5f,0.f)),
-	Motor(M6020,POS,pantile, ID1, PID(20.0f, 0.0f, 1.5f,0.f),PID(0.2f, 0.0f, 0.0f,0.f)),
-	Motor(M6020,SPD,pantile, ID2, PID(0.0f, 0.0f, 1.5f,0.f))
+	Motor(M3508,SPD,chassis, ID8, PID(10.f, 0.0f, 1.5f,0.f))
 };
 Motor can2_motor[CAN2_MOTOR_NUM] = {
-	Motor(M3508,POS,chassis, ID1, PID(0.f, 0.0f, 1.5f,0.f),PID(0.f, 0.0f, 0.0f,0.f)),
-	Motor(M2006,SPD,chassis, ID2, PID(0.f, 0.0f, 1.5f,0.f)),
-	Motor(M6020,POS,chassis, ID3, PID(0.f, 0.0f, 1.5f,0.f),PID(0.f, 0.005f, 15.0f,0.f)),
-	Motor(M6020,POS,pantile, ID6, PID(4.3f, 0.1f, 1.f,0.f),PID(0.8f, 0.05f, 5.0f,0.f)),
-	Motor(M6020,POS,pantile, ID4, PID(0.f, 0.0f, 1.5f,0.f),PID(0.f, 0.005f, 15.0f,0.f)),
-	Motor(M6020,SPD,chassis, ID8, PID(0.f, 0.0f, 1.5f,0.f))
+	Motor(M3508,SPD,shooter, ID1, PID(0.f, 0.0f, 1.5f,0.f)),
+	Motor(M3508,SPD,shooter, ID2, PID(0.f, 0.0f, 1.5f,0.f)),
+	Motor(M3508,SPD,shooter, ID3, PID(0.f, 0.0f, 1.5f,0.f)),
+	Motor(M6020,POS,pantile, ID4, PID(4.3f, 0.1f, 1.f,0.f),PID(0.8f, 0.05f, 5.0f,0.f)),
+	Motor(M3508,POS,supply, ID5, PID(0.f, 0.0f, 1.5f,0.f)),
+	Motor(M3508,POS,pantile, ID6, PID(0.f, 0.0f, 1.5f,0.f),PID(0.8f, 0.f, 0.f,0.f))
 };
-DMMOTOR DMmotor[1] = {
+DMMOTOR DMmotor[4] = {
 	DMMOTOR(0x01, P_S, L_F),
+	DMMOTOR(0x02, P_S, L_F),
+	DMMOTOR(0x03, P_S, L_F),
+	DMMOTOR(0x04, P_S, L_F),
 };
 
 
@@ -78,22 +79,35 @@ int main(void)
 	power.Init(&uart5,UART5,9600);
 
 	para.Init();
-	//ctrl.Init(std::vector<Motor*>{
-	//	&can2_motor[0],
-	//		& can2_motor[1],
-	//		& can2_motor[2],
-	//		& can2_motor[3],
-	//		& can2_motor[4],
-	//		& can2_motor[5]
-	//});
 	ctrl.Init(std::vector<Motor*>{
-		&can1_motor[0],
-			& can1_motor[1],
-			& can1_motor[2],
-			& can1_motor[3],
-			& can2_motor[3],
-			& can2_motor[4]    // PITCH，目前不用，但 Init 中仍会访问
+		&can1_motor[0], // 底盘 ID5
+			& can1_motor[1], // 底盘 ID6
+			& can1_motor[2], // 底盘 ID7
+			& can1_motor[3], // 底盘 ID8
+
+			& can2_motor[0], // 摩擦轮 ID1
+			& can2_motor[1], // 摩擦轮 ID2
+			& can2_motor[2], // 摩擦轮 ID3
+
+			& can2_motor[3], // ID4 M6020，云台 YAW
+			& can2_motor[4], // ID5 M3508，拨弹 supply
+			& can2_motor[5], // ID6 M3508，云台 PITCH
 	});
+	//});
+	//ctrl.Init(std::vector<Motor*>{
+	//		& can1_motor[0],
+	//		& can1_motor[1],	//底盘四个id5~id8
+	//		& can1_motor[2],
+	//		& can1_motor[3], 
+	//});
+	//ctrl.Init(std::vector<Motor*>{
+	//		& can2_motor[0],
+	//		& can2_motor[1],	//1~3摩擦轮3508
+	//		& can2_motor[2],	
+	//		& can2_motor[3],
+	//		& can2_motor[4],	// PITCH，目前不用,3508
+	//		& can2_motor[5],	//云台6020
+	//});
 
 	task.Init();
 	for (;;)
