@@ -142,7 +142,7 @@ void CONTROL::CHASSIS::Mecanum_Resolve(
 		vx + vy - wz,  // 0 左前
 		vx - vy + wz,  // 1 右前
 		vx + vy + wz,  // 2 右后
-		vx - vy - wz   // 3 左后
+		vx - vy - wz   // 3 左后   
 	};
 
 	int32_t max_abs_speed = 1;
@@ -220,7 +220,7 @@ void CONTROL::PANTILE::Update()
 	mark_pitch = std::max(std::min(mark_pitch, para.pitch_max), para.pitch_min);
 
 	ctrl.pantile_motor[PANTILE::YAW]->setangle = mark_yaw;
-	//ctrl.pantile_motor[PANTILE::PITCH]->setangle = mark_pitch;
+	ctrl.pantile_motor[PANTILE::PITCH]->setangle = mark_pitch;
 }
 
 void CONTROL::SHOOTER::Update()

@@ -62,6 +62,7 @@ void RC::OnRC()
 		ctrl.mode = CONTROL::FOLLOW;
 	}
 	else if (rc.s[0] == DOWN && rc.s[1] == DOWN)
+
 	{
 		if (abs(rc.ch[0]) > 330)
 		{
@@ -74,7 +75,7 @@ void RC::OnRC()
 	}
 	else if (rc.s[0] == DOWN && rc.s[1] == UP)
 	{
-
+		ctrl.mode = CONTROL::SEPARATE;
 	}
 	else if (rc.s[0] == DOWN && rc.s[1] == MID)
 	{
@@ -113,7 +114,13 @@ void RC::OnRC()
 		if (ctrl.mode == CONTROL::ROTATION)
 		{
 			ctrl.chassis.speedz = 1000;
-			ctrl.chassis.Keep_Direction();
+
+		}
+		if (ctrl.mode == CONTROL::SEPARATE)
+		{
+			ctrl.pantile.mark_yaw = rc.ch[2] * para.max_speed / 660.f;
+			ctrl.pantile.mark_pitch = rc.ch[3] * para.max_speed / 660.f;
+			
 		}
 		else if (ctrl.mode == CONTROL::FOLLOW)
 		{

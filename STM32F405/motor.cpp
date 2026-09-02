@@ -103,17 +103,13 @@ void Motor::Ontimer(uint8_t idata[][8], uint8_t* odata)//idate: receive;odate: t
 
 		if (spinning)
 		{
-
 		}
 		else {
 			if (need_curcircle > 0)
 			{
-				
-
 			}
 			else if (need_curcircle <= 0)
 			{
-
 			}
 		}
 		if (setspeed == 0 && curspeed == 0)
