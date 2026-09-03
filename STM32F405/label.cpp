@@ -5,7 +5,9 @@
 
 PARAMETER& PARAMETER::Init()
 {
-	pitch_min = 0, pitch_max = 8192, initial_pitch = 4096, initial_yaw = 4900;
+	// PITCH 现在使用连续编码器位置，pitch_min/max 是相对上电 home 的编码器偏移。
+	// 8192 = 一圈，当前先按上下各 2 圈保护，实测后再改。
+	pitch_min = -90000, pitch_max = 805000, initial_pitch = 4096, initial_yaw = 4900;
 	imu_pitch_max = 18, imu_pitch_min = 16;
 	ace_speed = 1000, max_speed = 3000, rota_speed = 3000;
 	pitch_speed = 8, yaw_speed = 2;

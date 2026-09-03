@@ -32,14 +32,15 @@ void CONTROL::Init(std::vector<Motor*> motor)
 	pantile_motor[PANTILE::TYPE::PITCH]->setangle = para.initial_pitch;
 	pantile.mark_yaw = para.initial_yaw;
 	pantile_motor[PANTILE::TYPE::YAW]->setangle = para.initial_yaw;
+	pantile_motor[PANTILE::TYPE::PITCH]->continuous_position = true;
 	pantile_motor[PANTILE::TYPE::YAW]->continuous_position = true;
 }
 
 
 void CONTROL::Control_Pantile(int32_t ch_yaw, int32_t ch_pitch)
 {
-	ch_pitch *= (-1.f);
-	ch_yaw *= (1.f);//方向相反修改这里正负
+	ch_pitch *= (-10.f);
+	ch_yaw *= (-1.f);//方向相反修改这里正负
 	float adjangle = this->pantile.sensitivity * 2;
 
 	ctrl.pantile.mark_pitch -= (float)(adjangle * ch_pitch);
@@ -220,24 +221,43 @@ void CONTROL::CHASSIS::Update()
 	Mecanum_Resolve(speedx, speedy, speedz);
 
 }
-
 void CONTROL::PANTILE::Update()
 {
+	Motor* pitch = ctrl.pantile_motor[PANTILE::PITCH];
+
+	// PITCH 使用连续编码器位置，以首次反馈值作为 home。
+	// 这样丝杆多圈时不会再用 0~8192 的单圈角度做控制。
+	if (pitch->continuous_position && pitch->continuous_initialized && !pitch_position_initialized)
+	{
+		pitch_home = (float)pitch->sum_angle;
+		base_mark_pitch = pitch_home;
+		mark_pitch = pitch_home;
+		pitch_position_initialized = true;
+	}
+
 	if (ctrl.mode == RESET)
 	{
 		SetYawAbsolute(para.initial_yaw);
-		mark_pitch = para.initial_pitch;
+		if (pitch_position_initialized)
+		{
+			mark_pitch = pitch_home;
+		}
 
-		// 下次离开RESET时重新记录当前IMU角度
+		// 下次离开RESET时重新记录当前角度
 		yaw_hold_initialized = false;
 	}
 
-	// YAW 保持连续多圈目标，不再折叠到 0~8192，否则只能转半圈。
-	mark_pitch = std::max(std::min(mark_pitch, para.pitch_max), para.pitch_min);
-
 	ctrl.pantile_motor[PANTILE::YAW]->setangle = mark_yaw;
-	ctrl.pantile_motor[PANTILE::PITCH]->setangle = mark_pitch;
+
+	if (pitch_position_initialized)
+	{
+		const float pitch_low = pitch_home + para.pitch_min;
+		const float pitch_high = pitch_home + para.pitch_max;
+		mark_pitch = std::max(std::min(mark_pitch, pitch_high), pitch_low);
+		pitch->setangle = mark_pitch;
+	}
 }
+
 
 void CONTROL::SHOOTER::Update()
 {

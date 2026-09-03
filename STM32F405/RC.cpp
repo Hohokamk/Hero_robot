@@ -66,7 +66,10 @@ void RC::OnRC()
 	}
 	if (Shift_mode()) {
 		ctrl.pantile.mark_yaw = (float)ctrl.pantile_motor[CONTROL::PANTILE::YAW]->sum_angle;
-		ctrl.pantile.mark_pitch = ctrl.pantile_motor[CONTROL::PANTILE::PITCH]->angle[now];
+		if (ctrl.pantile_motor[CONTROL::PANTILE::PITCH]->continuous_initialized)
+		{
+			ctrl.pantile.mark_pitch = (float)ctrl.pantile_motor[CONTROL::PANTILE::PITCH]->sum_angle;
+		}
 	}
 	// DOWN/DOWN、DOWN/MID、MID/DOWN、UP/DOWN：保持上一次模式不变
 }

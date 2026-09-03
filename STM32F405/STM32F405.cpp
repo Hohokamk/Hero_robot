@@ -37,7 +37,7 @@ Motor can2_motor[CAN2_MOTOR_NUM] = {
 	Motor(M3508,SPD,shooter, ID1, PID(0.f, 0.0f, 1.5f,0.f)),
 	Motor(M3508,SPD,shooter, ID2, PID(0.f, 0.0f, 1.5f,0.f)),
 	Motor(M3508,SPD,shooter, ID3, PID(0.f, 0.0f, 1.5f,0.f)),
-	Motor(M3508,POS,pantile, ID4, PID(10.f, 0.1f, 1.5f,0.f),PID(5.f, 0.1f, 0.f,0.f)),
+	Motor(M3508,POS,pantile, ID4, PID(20.f, 0.f, 1.5f,0.f),PID(0.25f, 0.f, 0.f,0.1f)),
 	Motor(M3508,SPD,supply, ID5, PID(10.0f, 0.0f, 1.5f,0.f)),
 	Motor(M6020,POS,pantile, ID6, PID(4.3f, 0.1f, 1.f,0.f),PID(0.8f, 0.05f, 5.0f,0.f)),
 };
@@ -81,7 +81,7 @@ int main(void)
 	can2.Init(CAN2);
 	timer.Init(BASE, TIM3, 1000).BaseInit();
 	imu_pantile.Init(&uart4, UART4, 115200, CH010);
-	rc.Init(&uart6, USART6, 100000);
+	rc.Init(&uart3, USART3, 100000);
 	power.Init(&uart5,UART5,9600);
 
 	para.Init();
