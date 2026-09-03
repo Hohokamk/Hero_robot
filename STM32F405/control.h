@@ -30,7 +30,7 @@ public:
 
 	struct PANTILE
 	{
-		enum TYPE { YAW, PITCH };
+		enum TYPE { PITCH, YAW };
 		float mark_pitch{}, mark_yaw{};
 		float base_mark_yaw{};      // YAW基准位置（进入保持模式时的电机角度）
 		float base_mark_pitch{};    // PITCH基准位置
@@ -47,6 +47,7 @@ public:
 
 		float set_yaw{};                 // 世界目标YAW，单位：度
 		bool yaw_hold_initialized = false;
+		void SetYawAbsolute(float target_wrapped);
 		/*
  * Yaw速度前馈相关参数。
  *
@@ -71,6 +72,18 @@ public:
 	struct SHOOTER
 	{
 		float now_bullet_speed = 0.f;
+
+		enum class State { IDLE, SPIN_UP, FEED, PUSH, RETRACT, DONE };
+
+		State state = State::IDLE;
+		uint32_t state_time = 0;           // 5ms 一周期，按毫秒累加
+		uint32_t bullet_detect_cnt = 0;    // 微动开关消抖计数
+
+		int16_t supply_speed = 2160;       // 拨弹盘转速
+		uint32_t feed_timeout = 1000;      // 供弹超时
+		uint32_t bullet_detect_threshold = 3; // 连续 3 次(15ms)认为上弹到位
+		uint32_t push_timeout = 300;       // 推杆推出保持时间
+		uint32_t retract_timeout = 300;    // 推杆收回时间
 
 		bool auto_shoot = false;
 		bool openRub = false, supply_bullet = false;

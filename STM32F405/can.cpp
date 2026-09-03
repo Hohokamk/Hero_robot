@@ -1,6 +1,7 @@
 #include "can.h"
 #include "label.h"
 #include "string.h"
+#include "HTmotor.h"
 
 /*
 * @brief		CAN通信初始化函数
@@ -142,6 +143,7 @@ void HAL_CAN_RxCpltCallback(CAN_HandleTypeDef* hcan)
 		if (id >= 1 && id <= 4)
 		{
 			memcpy(can2.jointidata[id - 1], hcan->pRxMsg->Data, 8);
+			DMmotor[id - 1].online = true;
 		}
 		else
 		{

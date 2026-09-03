@@ -58,14 +58,14 @@ void RC::OnRC()
 	}
 	else if (rc.s[0] == MID && rc.s[1] == UP)
 	{
-		ctrl.mode = CONTROL::FOLLOW;
+		ctrl.mode = CONTROL::TEST;
 	}
 	else if (rc.s[0] == DOWN && rc.s[1] == UP)
 	{
 		ctrl.mode = CONTROL::SEPARATE;
 	}
 	if (Shift_mode()) {
-		ctrl.pantile.mark_yaw = ctrl.pantile_motor[CONTROL::PANTILE::YAW]->angle[now];
+		ctrl.pantile.mark_yaw = (float)ctrl.pantile_motor[CONTROL::PANTILE::YAW]->sum_angle;
 		ctrl.pantile.mark_pitch = ctrl.pantile_motor[CONTROL::PANTILE::PITCH]->angle[now];
 	}
 	// DOWN/DOWN、DOWN/MID、MID/DOWN、UP/DOWN：保持上一次模式不变

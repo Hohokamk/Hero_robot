@@ -37,8 +37,8 @@ Motor can2_motor[CAN2_MOTOR_NUM] = {
 	Motor(M3508,SPD,shooter, ID1, PID(0.f, 0.0f, 1.5f,0.f)),
 	Motor(M3508,SPD,shooter, ID2, PID(0.f, 0.0f, 1.5f,0.f)),
 	Motor(M3508,SPD,shooter, ID3, PID(0.f, 0.0f, 1.5f,0.f)),
-	Motor(M3508,POS,pantile, ID4, PID(0.f, 0.0f, 1.5f,0.f),PID(0.8f, 0.f, 0.f,0.f)),
-	Motor(M3508,POS,supply, ID5, PID(0.f, 0.0f, 1.5f,0.f),PID(0.8f, 0.05f, 5.0f,0.f)),
+	Motor(M3508,POS,pantile, ID4, PID(10.f, 0.1f, 1.5f,0.f),PID(5.f, 0.1f, 0.f,0.f)),
+	Motor(M3508,SPD,supply, ID5, PID(10.0f, 0.0f, 1.5f,0.f)),
 	Motor(M6020,POS,pantile, ID6, PID(4.3f, 0.1f, 1.f,0.f),PID(0.8f, 0.05f, 5.0f,0.f)),
 };
 DMMOTOR DMmotor[4] = {
@@ -68,14 +68,20 @@ int main(void)
 	SystemClockConfig();
 	delay.Init(168);
 	HAL_Init();
+	// PA8：微动开关输入，上拉（按下接地时读到 0）
+	GPIO_Init(GPIOA, GPIO_MODE_INPUT, GPIO_PULLUP, GPIO_PIN_8);
+
+	// PC9：推杆 IN2 控制输出
+	GPIO_Init(GPIOC, GPIO_MODE_OUTPUT_PP, GPIO_NOPULL, GPIO_PIN_9);
+	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_RESET);  // 初始收回
 	can1.Init(CAN1);
 	//HAL_CAN_Start(&hcan1);
 	//HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING);
 
 	can2.Init(CAN2);
 	timer.Init(BASE, TIM3, 1000).BaseInit();
-	imu_pantile.Init(&uart6, USART6, 115200, CH010);
-	rc.Init(&uart3, USART3, 100000);
+	imu_pantile.Init(&uart4, UART4, 115200, CH010);
+	rc.Init(&uart6, USART6, 100000);
 	power.Init(&uart5,UART5,9600);
 
 	para.Init();
@@ -89,9 +95,9 @@ int main(void)
 			& can2_motor[1], // 摩擦轮 ID2
 			& can2_motor[2], // 摩擦轮 ID3
 
-			& can2_motor[3], // ID4 M6020，云台 YAW
+			& can2_motor[3], // ID4 M3508，云台 PITCH
 			& can2_motor[4], // ID5 M3508，拨弹 supply
-			& can2_motor[5], // ID6 M3508，云台 PITCH
+			& can2_motor[5], // ID6 M6020，云台 YAW
 	});
 	//});
 	//ctrl.Init(std::vector<Motor*>{

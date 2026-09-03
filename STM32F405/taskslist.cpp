@@ -77,18 +77,27 @@ void MotorUpdateTask(void* pvParameters)
 	
 	while (1)
 	{
-	TickType_t xlastWakeTime = xTaskGetTickCount();
-	
-		for (auto& motor : can1_motor)motor.Ontimer(can1.data, can1.temp_data);
-
-		for (auto& motor : can2_motor)motor.Ontimer(can2.data, can2.temp_data);
-
+        //发送达妙使能控制帧
         for (auto& dm : DMmotor)
         {
             dm.State_Decode(can2, can2.jointidata);
+
+            if (dm.online && !dm.hold_locked)
+            {
+                dm.setPos = dm.pos;   // 当前反馈位置作为固定目标
+                dm.setSpeed = 0;      // 速度为 0，定住
+                dm.hold_locked = true;
+            }
+
             dm.DMmotor_Ontimer(can2, dm.Kp, dm.Kd, can2.jointpdata[dm.ID - 1]);
         }
 
+
+	TickType_t xlastWakeTime = xTaskGetTickCount();
+
+		for (auto& motor : can1_motor)motor.Ontimer(can1.data, can1.temp_data);
+
+		for (auto& motor : can2_motor)motor.Ontimer(can2.data, can2.temp_data);
 
 	vTaskDelayUntil(&xlastWakeTime, pdMS_TO_TICKS(2));//开始执行该任务之后1ms再执行该任务
 }
@@ -106,6 +115,17 @@ void CanTransimtTask(void* pvParameters)
 		case 0:
             for (auto& dm : DMmotor)
             {
+                if (!dm.hold_locked)
+                {
+                    continue;   // 还没收到反馈，不动作
+                }
+
+                if (!dm.enable_sent)
+                {
+                    dm.CanComm_ControlCmd(can2, CMD_MOTOR_MODE, MOTOR_MODE + dm.ID);
+                    dm.enable_sent = true;
+                }
+
                 dm.DMmotor_transmit(dm.ID);
             }
 			break;
@@ -154,6 +174,22 @@ void ControlTask(void* pvParameters)
             ctrl.pantile.yaw_speed_ff_target = 0.0f;
             yaw_motor->speed_feedforward = 0.0f;
         }
+        else if (ctrl.mode == CONTROL::TEST)
+        {
+            /* 底盘平移由摇杆控制，Yaw 不旋转。 */
+            ctrl.chassis.speedx = rc.rc.ch[1] * para.max_speed / 660.f;
+            ctrl.chassis.speedy = rc.rc.ch[0] * para.max_speed / 660.f;
+            ctrl.chassis.speedz = 0;
+
+            /* 离开世界方向保持，清空Yaw前馈并标记需要重新初始化。 */
+            ctrl.pantile.yaw_hold_initialized = false;
+            ctrl.pantile.yaw_speed_ff = 0.0f;
+            ctrl.pantile.yaw_speed_ff_target = 0.0f;
+            yaw_motor->speed_feedforward = 0.0f;
+
+            /* 云台手动控制，不进行世界方向保持。 */
+            ctrl.Control_Pantile(rc.rc.ch[2] * para.yaw_speed / 660.f, rc.rc.ch[3] * para.pitch_speed / 660.f);
+        }
         else if (ctrl.mode == CONTROL::SEPARATE)
         {
             /* 底盘平移由摇杆控制，Yaw 不旋转。 */
@@ -192,7 +228,7 @@ void ControlTask(void* pvParameters)
                  */
                 ctrl.pantile.set_yaw = imu_pantile.GetAngleYaw();
 
-                ctrl.pantile.mark_yaw = yaw_motor->angle[now];
+                ctrl.pantile.mark_yaw = (float)yaw_motor->sum_angle;
 
                 ctrl.pantile.base_mark_yaw = ctrl.pantile.mark_yaw;
 
@@ -266,7 +302,14 @@ void ControlTask(void* pvParameters)
         /* 拨弹触发：拨码 DOWN + DOWN。 */
         if (rc.rc.s[0] == RC::DOWN && rc.rc.s[1] == RC::DOWN)
         {
-            ctrl.shooter.openRub = (rc.rc.ch[0] > 330 || rc.rc.ch[0] < -330);
+            /* 发射控制：只有拨码 DOWN + DOWN 才允许开火 */
+            bool fire_armed = (rc.rc.s[0] == RC::DOWN && rc.rc.s[1] == RC::DOWN);
+
+            int32_t ch0 = rc.rc.ch[0];
+            if (ch0 < 0) ch0 = -ch0;                       // 取绝对值，左右都算
+
+            ctrl.shooter.openRub = fire_armed && (ch0 > 330);   // 轻推：单发/待发
+            ctrl.shooter.auto_shoot = fire_armed && (ch0 > 660);   // 推满：连发
         }
 
         ctrl.pantile.Update();

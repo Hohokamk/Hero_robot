@@ -50,6 +50,9 @@ typedef enum {
 class DMMOTOR
 {
 public:
+	bool online = false;
+	bool hold_locked = false;
+	bool enable_sent = false;
 	uint32_t ID;
 	FUCTION_MODE function;
 	POSITION position;

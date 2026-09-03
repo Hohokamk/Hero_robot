@@ -97,6 +97,15 @@ void Motor::Ontimer(uint8_t idata[][8], uint8_t* odata)//idate: receive;odate: t
 	}*/
 	//----------------------------------------------------------------
 	//20220121--hz
+	if (continuous_position && !continuous_initialized)
+	{
+		// 第一次收到编码器反馈时，把连续角度锚定到当前机械角，
+		// 避免用 0 做基准导致 yaw 开机先转一大段。
+		angle[pre] = angle[now];
+		sum_angle = angle[now];
+		setangle = (float)sum_angle;
+		continuous_initialized = true;
+	}
 	recorded_the_Laps();
 	if (mode == ACE)
 	{
@@ -124,7 +133,14 @@ void Motor::Ontimer(uint8_t idata[][8], uint8_t* odata)//idate: receive;odate: t
 	}
 	else if (mode == POS)
 	{
-		position_error = getdeltaa(setangle - angle[now]);
+		if (continuous_position)
+		{
+			position_error = (int32_t)(setangle - (float)sum_angle);
+		}
+		else
+		{
+			position_error = getdeltaa(setangle - angle[now]);
+		}
 
 		setspeed = pid[position].Position(position_error, 10000) + speed_feedforward;
 		setspeed = setrange(setspeed, 5000);

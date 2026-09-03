@@ -32,6 +32,7 @@ void CONTROL::Init(std::vector<Motor*> motor)
 	pantile_motor[PANTILE::TYPE::PITCH]->setangle = para.initial_pitch;
 	pantile.mark_yaw = para.initial_yaw;
 	pantile_motor[PANTILE::TYPE::YAW]->setangle = para.initial_yaw;
+	pantile_motor[PANTILE::TYPE::YAW]->continuous_position = true;
 }
 
 
@@ -43,6 +44,23 @@ void CONTROL::Control_Pantile(int32_t ch_yaw, int32_t ch_pitch)
 
 	ctrl.pantile.mark_pitch -= (float)(adjangle * ch_pitch);
 	ctrl.pantile.mark_yaw -= (float)(adjangle * ch_yaw);
+}
+
+void CONTROL::PANTILE::SetYawAbsolute(float target_wrapped)
+{
+	Motor* yaw = ctrl.pantile_motor[YAW];
+	const int32_t current = yaw->sum_angle;
+	int32_t wrapped_current = current % 8192;
+	if (wrapped_current < 0)
+	{
+		wrapped_current += 8192;
+	}
+
+	int32_t diff = (int32_t)target_wrapped - wrapped_current;
+	if (diff > 4096) diff -= 8192;
+	else if (diff < -4096) diff += 8192;
+
+	mark_yaw = (float)(current + diff);
 }
 
 void CONTROL::PANTILE::Keep_Pantile(float angleKeep,PANTILE::TYPE type,IMU& frameOfReference)
@@ -76,10 +94,10 @@ void CONTROL::PANTILE::Keep_Pantile(float angleKeep,PANTILE::TYPE type,IMU& fram
 		 * 这样Motor内部的position_error始终近似等于
 		 * 当前世界Yaw误差，而不会因为mark_yaw冻结，
 		 * 变成旧机械角度误差。
-		 */
+		*/
 		if (ctrl.mode == CONTROL::ROTATION)
 		{
-			mark_yaw =ctrl.pantile_motor[YAW]->angle[now] + delta;
+			mark_yaw = (float)ctrl.pantile_motor[YAW]->sum_angle + delta;
 		}
 		else
 		{
@@ -90,11 +108,11 @@ void CONTROL::PANTILE::Keep_Pantile(float angleKeep,PANTILE::TYPE type,IMU& fram
 			 */
 			if (fabs(delta) >= 30.0f)
 			{
-				mark_yaw = ctrl.pantile_motor[YAW]->angle[now] + delta;
+				mark_yaw = (float)ctrl.pantile_motor[YAW]->sum_angle + delta;
 			}
 			else
 			{
-				mark_yaw = ctrl.pantile_motor[YAW]->angle[now];
+				mark_yaw = (float)ctrl.pantile_motor[YAW]->sum_angle;
 			}
 		}
 	}
@@ -207,16 +225,14 @@ void CONTROL::PANTILE::Update()
 {
 	if (ctrl.mode == RESET)
 	{
-		mark_yaw = para.initial_yaw;
+		SetYawAbsolute(para.initial_yaw);
 		mark_pitch = para.initial_pitch;
 
 		// 下次离开RESET时重新记录当前IMU角度
 		yaw_hold_initialized = false;
 	}
 
-	if (mark_yaw > 8192.0)mark_yaw -= 8192.0;
-	if (mark_yaw < 0.0)mark_yaw += 8192.0;
-
+	// YAW 保持连续多圈目标，不再折叠到 0~8192，否则只能转半圈。
 	mark_pitch = std::max(std::min(mark_pitch, para.pitch_max), para.pitch_min);
 
 	ctrl.pantile_motor[PANTILE::YAW]->setangle = mark_yaw;
@@ -225,38 +241,90 @@ void CONTROL::PANTILE::Update()
 
 void CONTROL::SHOOTER::Update()
 {
-	//now_bullet_speed = judgement.data.ext_shoot_data_t.bullet_speed;
 	if (ctrl.mode == RESET)
 	{
-		openRub = false;
-		supply_bullet = false;
-		auto_shoot = false;
-	}
-	if (openRub)
-	{
+		for (int i = 0; i < SHOOTER_MOTOR_NUM; ++i)
+			ctrl.shooter_motor[i]->setspeed = 0;
+		ctrl.supply_motor[0]->setspeed = 0;
 
-	}
-	else
-	{
+		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_RESET); // 推杆收回
 
+		openRub = supply_bullet = auto_shoot = false;
+		state = State::IDLE;
+		state_time = 0;
+		bullet_detect_cnt = 0;
+		return;
 	}
 
-	if (supply_bullet && openRub)
+	// 摩擦轮常转：扣着(openRub)就保持目标转速，不参与发射时序
+	int16_t friction = openRub ? shoot_speed : 0;
+	for (int i = 0; i < SHOOTER_MOTOR_NUM; ++i)
+		ctrl.shooter_motor[i]->setspeed = friction;
+
+	state_time += 5;
+
+	switch (state)
 	{
-		if (auto_shoot)
+	case State::IDLE:
+		ctrl.supply_motor[0]->setspeed = 0;
+		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_RESET);
+
+		if (openRub)
 		{
-			ctrl.supply_motor[0]->setspeed = 2160;
-			ctrl.supply_motor[0]->spinning = true;
+			state = State::FEED;
+			state_time = 0;
+			bullet_detect_cnt = 0;
+		}
+		break;
+
+	case State::FEED:
+		// 拨弹盘连续供弹，等微动开关确认上弹
+		ctrl.supply_motor[0]->setspeed = supply_speed;
+
+		if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_8) == GPIO_PIN_RESET)
+		{
+			if (++bullet_detect_cnt >= bullet_detect_threshold)
+			{
+				ctrl.supply_motor[0]->setspeed = 0;              // 上弹到位，停拨弹
+				HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_SET); // 推杆推出
+				state = State::PUSH;
+				state_time = 0;
+			}
 		}
 		else
 		{
-			ctrl.supply_motor[0]->setspeed = 2160;
-			ctrl.supply_motor[0]->spinning = true;
+			bullet_detect_cnt = 0;
 		}
-	}
-	else 
-	{
-		ctrl.supply_motor[0]->spinning = false;
+
+		if (state_time >= feed_timeout)
+		{
+			state = State::IDLE;   // 供弹超时，退回
+			state_time = 0;
+		}
+		break;
+
+	case State::PUSH:
+		// 保持推出状态，把弹推进摩擦轮发射
+		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_SET);
+
+		if (state_time >= push_timeout)
+		{
+			HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_RESET); // 收回
+			state = State::RETRACT;
+			state_time = 0;
+		}
+		break;
+
+	case State::RETRACT:
+		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_RESET);
+
+		if (state_time >= retract_timeout)
+		{
+			state = auto_shoot ? State::FEED : State::IDLE;
+			state_time = 0;
+			bullet_detect_cnt = 0;
+		}
+		break;
 	}
 }
 
