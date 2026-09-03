@@ -74,8 +74,8 @@ int main(void)
 
 	can2.Init(CAN2);
 	timer.Init(BASE, TIM3, 1000).BaseInit();
-	imu_pantile.Init(&uart2, USART2, 115200, CH010);
-	rc.Init(&uart1, USART1, 100000);
+	imu_pantile.Init(&uart6, USART6, 115200, CH010);
+	rc.Init(&uart3, USART3, 100000);
 	power.Init(&uart5,UART5,9600);
 
 	para.Init();

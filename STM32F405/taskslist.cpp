@@ -95,7 +95,7 @@ void MotorUpdateTask(void* pvParameters)
 }
 
 void CanTransimtTask(void* pvParameters)
-{
+{ 
 	while (true)
 	{
 
@@ -141,6 +141,10 @@ void ControlTask(void* pvParameters)
 
         if (ctrl.mode == CONTROL::RESET)
         {
+            ctrl.chassis.speedx = 0;
+            ctrl.chassis.speedy = 0;
+            ctrl.chassis.speedz = 0;
+
             ctrl.pantile.yaw_hold_initialized = false;
 
             /*
@@ -150,8 +154,37 @@ void ControlTask(void* pvParameters)
             ctrl.pantile.yaw_speed_ff_target = 0.0f;
             yaw_motor->speed_feedforward = 0.0f;
         }
+        else if (ctrl.mode == CONTROL::SEPARATE)
+        {
+            /* 底盘平移由摇杆控制，Yaw 不旋转。 */
+            ctrl.chassis.speedx = rc.rc.ch[1] * para.max_speed / 660.f;
+            ctrl.chassis.speedy = rc.rc.ch[0] * para.max_speed / 660.f;
+            ctrl.chassis.speedz = 0;
+
+            /* 离开世界方向保持，清空Yaw前馈并标记需要重新初始化。 */
+            ctrl.pantile.yaw_hold_initialized = false;
+            ctrl.pantile.yaw_speed_ff = 0.0f;
+            ctrl.pantile.yaw_speed_ff_target = 0.0f;
+            yaw_motor->speed_feedforward = 0.0f;
+
+            /* 云台手动控制，不进行世界方向保持。 */
+            ctrl.Control_Pantile(rc.rc.ch[2] * para.yaw_speed / 660.f, rc.rc.ch[3] * para.pitch_speed / 660.f);
+        }
         else
         {
+            /* FOLLOW / ROTATION：底盘由摇杆控制。 */
+            ctrl.chassis.speedx = rc.rc.ch[1] * para.max_speed / 660.f;
+            ctrl.chassis.speedy = rc.rc.ch[0] * para.max_speed / 660.f;
+
+            if (ctrl.mode == CONTROL::ROTATION)
+            {
+                ctrl.chassis.speedz = 1000;
+            }
+            else
+            {
+                ctrl.chassis.speedz = rc.rc.ch[2] * para.rota_speed / 660.0f;
+            }
+
             if (!ctrl.pantile.yaw_hold_initialized)
             {
                 /*
@@ -185,7 +218,7 @@ void ControlTask(void* pvParameters)
 
             if (ctrl.mode == CONTROL::ROTATION)
             {
-                command_feedforward =ctrl.pantile.yaw_cmd_ff_k  * ctrl.chassis.speedz;
+                command_feedforward = ctrl.pantile.yaw_cmd_ff_k * ctrl.chassis.speedz;
             }
 
             /*
@@ -195,7 +228,7 @@ void ControlTask(void* pvParameters)
              * 不需要等待世界角度误差继续积累，
              * 直接根据Yaw角速度增加反向速度。
              */
-            float gyro_feedback =ctrl.pantile.yaw_gyro_fb_k * imu_pantile.GetAngularVelocityYaw();
+            float gyro_feedback = ctrl.pantile.yaw_gyro_fb_k * imu_pantile.GetAngularVelocityYaw();
 
             ctrl.pantile.yaw_speed_ff_target = command_feedforward + gyro_feedback;
 
@@ -203,13 +236,13 @@ void ControlTask(void* pvParameters)
              * 前馈限幅。
              * 初期建议限制在±300以内。
              */
-            if (ctrl.pantile.yaw_speed_ff_target> ctrl.pantile.yaw_ff_limit)
+            if (ctrl.pantile.yaw_speed_ff_target > ctrl.pantile.yaw_ff_limit)
             {
-                ctrl.pantile.yaw_speed_ff_target =ctrl.pantile.yaw_ff_limit;
+                ctrl.pantile.yaw_speed_ff_target = ctrl.pantile.yaw_ff_limit;
             }
-            else if (ctrl.pantile.yaw_speed_ff_target< -ctrl.pantile.yaw_ff_limit)
+            else if (ctrl.pantile.yaw_speed_ff_target < -ctrl.pantile.yaw_ff_limit)
             {
-                ctrl.pantile.yaw_speed_ff_target =-ctrl.pantile.yaw_ff_limit;
+                ctrl.pantile.yaw_speed_ff_target = -ctrl.pantile.yaw_ff_limit;
             }
 
             /*
@@ -222,13 +255,18 @@ void ControlTask(void* pvParameters)
             /*
              * 将速度前馈送给原有POS位置—速度双环。
              */
-            yaw_motor->speed_feedforward =
-                ctrl.pantile.yaw_speed_ff;
+            yaw_motor->speed_feedforward = ctrl.pantile.yaw_speed_ff;
 
             /*
              * 原世界角度保持逻辑不变。
              */
-            ctrl.pantile.Keep_Pantile( ctrl.pantile.set_yaw, CONTROL::PANTILE::YAW, imu_pantile );
+            ctrl.pantile.Keep_Pantile(ctrl.pantile.set_yaw, CONTROL::PANTILE::YAW, imu_pantile);
+        }
+
+        /* 拨弹触发：拨码 DOWN + DOWN。 */
+        if (rc.rc.s[0] == RC::DOWN && rc.rc.s[1] == RC::DOWN)
+        {
+            ctrl.shooter.openRub = (rc.rc.ch[0] > 330 || rc.rc.ch[0] < -330);
         }
 
         ctrl.pantile.Update();

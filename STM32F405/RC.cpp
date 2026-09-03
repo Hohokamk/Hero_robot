@@ -55,85 +55,20 @@ void RC::OnRC()
 	else if (rc.s[0] == UP && rc.s[1] == UP)
 	{
 		ctrl.mode = CONTROL::ROTATION;
-
 	}
 	else if (rc.s[0] == MID && rc.s[1] == UP)
 	{
 		ctrl.mode = CONTROL::FOLLOW;
 	}
-	else if (rc.s[0] == DOWN && rc.s[1] == DOWN)
-
-	{
-		if (abs(rc.ch[0]) > 330)
-		{
-			ctrl.shooter.openRub = true;
-		}
-		else
-		{
-			ctrl.shooter.openRub = false;
-		}
-	}
 	else if (rc.s[0] == DOWN && rc.s[1] == UP)
 	{
 		ctrl.mode = CONTROL::SEPARATE;
 	}
-	else if (rc.s[0] == DOWN && rc.s[1] == MID)
-	{
-
+	if (Shift_mode()) {
+		ctrl.pantile.mark_yaw = ctrl.pantile_motor[CONTROL::PANTILE::YAW]->angle[now];
+		ctrl.pantile.mark_pitch = ctrl.pantile_motor[CONTROL::PANTILE::PITCH]->angle[now];
 	}
-
-	else if (rc.s[0] == MID && rc.s[1] == DOWN)
-	{
-
-	}
-	else if (rc.s[0] == UP && rc.s[1] == DOWN)
-	{
-		;
-	}
-	if (Shift_mode())
-	{
-
-	}
-	if (ctrl.mode == CONTROL::RESET)
-	{
-		ctrl.chassis.speedx = 0;
-		ctrl.chassis.speedy = 0;
-		ctrl.chassis.speedz = 0;
-	}
-	//pantile_yaw保持不动
-	//ROTATION：：恒速转z
-	//！ROTATION：：遥控定wz
-	if (ctrl.mode != CONTROL::RESET)
-	{
-
-		ctrl.chassis.speedx = rc.ch[1] * para.max_speed / 660.f;
-		ctrl.chassis.speedy = rc.ch[0] * para.max_speed / 660.f;
-		//ctrl.chassis.speedz = rc.ch[2] * para.rota_speed / 660.0f;
-		//ctrl.Control_Pantile(rc.ch[2] * para.yaw_speed / 660.f, rc.ch[3] * para.pitch_speed / 660.f);
-
-		if (ctrl.mode == CONTROL::ROTATION)
-		{
-			ctrl.chassis.speedz = 1000;
-
-		}
-		if (ctrl.mode == CONTROL::SEPARATE)
-		{
-			ctrl.pantile.mark_yaw = rc.ch[2] * para.max_speed / 660.f;
-			ctrl.pantile.mark_pitch = rc.ch[3] * para.max_speed / 660.f;
-			
-		}
-		else if (ctrl.mode == CONTROL::FOLLOW)
-		{
-			ctrl.chassis.speedz = rc.ch[2] * para.rota_speed / 660.0f;
-			
-		}
-		/*ctrl.chassis.speedx = rc.ch[1] * para.max_speed / 660.0f;
-
-		ctrl.chassis.speedy =rc.ch[0] * para.max_speed / 660.0f;
-
-		ctrl.chassis.speedz =rc.ch[2] * para.rota_speed / 660.0f;*/
-
-	}
+	// DOWN/DOWN、DOWN/MID、MID/DOWN、UP/DOWN：保持上一次模式不变
 }
 
 void RC::OnPC()
